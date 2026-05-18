@@ -1,1 +1,4 @@
-# Data-Structures-T2
+# To run the program
+
+g++ main.cpp -o final
+./final.exe
