@@ -2,6 +2,7 @@
 
 // import files here
 #include "robot_assignment.cpp"
+#include "item_management.cpp"
 #include "warehouse_navigation.cpp"
 
 using namespace std;
@@ -27,6 +28,9 @@ int main()
         {
         case 2:
             robotAssignmentMenu();
+            break;
+        case 4:
+            itemManagementMenu();
             break;
         case 5:
             warehouseNavigationMenu();
