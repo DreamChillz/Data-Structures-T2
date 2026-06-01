@@ -7,10 +7,7 @@
 
 using namespace std;
 
-void orderManagementMenu();
 void robotAssignmentMenu();
-void robotNavigationMenu();
-void itemManagementMenu();
 void warehouseNavigationMenu();
 
 int main() {
@@ -30,17 +27,9 @@ int main() {
         cin >> choice;
 
         switch (choice) {
-            case 1:
-                orderManagementMenu();
-                break;
+
             case 2:
                 robotAssignmentMenu();
-                break;
-            case 3:
-                robotNavigationMenu();
-                break;
-            case 4:
-                itemManagementMenu();
                 break;
             case 5:
                 warehouseNavigationMenu();
