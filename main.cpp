@@ -2,6 +2,7 @@
 
 // import files here
 #include "robot_assignment.cpp"
+#include "item_management.cpp"
 #include "warehouse_navigation.cpp"
 
 using namespace std;
