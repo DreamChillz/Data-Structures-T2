@@ -6,8 +6,13 @@
 
 using namespace std;
 
-int main()
-{
+void orderManagementMenu();
+void robotAssignmentMenu();
+void robotNavigationMenu();
+void itemManagementMenu();
+void warehouseNavigationMenu();
+
+int main() {
     int choice;
 
     do
@@ -23,19 +28,27 @@ int main()
         cout << "Enter choice: ";
         cin >> choice;
 
-        switch (choice)
-        {
-        case 2:
-            robotAssignmentMenu();
-            break;
-        case 5:
-            warehouseNavigationMenu();
-            break;
-        case 0:
-            cout << "Exiting system...\n";
-            break;
-        default:
-            cout << "Module not connected yet.\n";
+        switch (choice) {
+            case 1:
+                orderManagementMenu();
+                break;
+            case 2:
+                robotAssignmentMenu();
+                break;
+            case 3:
+                robotNavigationMenu();
+                break;
+            case 4:
+                itemManagementMenu();
+                break;
+            case 5:
+                warehouseNavigationMenu();
+                break;
+            case 0:
+                cout << "Exiting system...\n";
+                break;
+            default:
+                cout << "Invalid choice. Please try again.\n";
         }
 
     } while (choice != 0);

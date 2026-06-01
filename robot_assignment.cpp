@@ -5,16 +5,39 @@
 using namespace std;
 
 const int MAX_ROBOTS = 5;
+const int MAX_ASSIGNMENTS = 50;
 
 struct Robot {
     string robotID;
     string status; // "available", "busy", "maintenance"
+    string currentTaskID;
     int taskCount;
 };
 
+struct AssignmentRecord {
+    string taskID;
+    string robotID;
+    string status;
+};
+
 Robot robots[MAX_ROBOTS];
+AssignmentRecord assignmentHistory[MAX_ASSIGNMENTS];
 int robotCount = 0;
 int currentIndex = 0;
+int assignmentCount = 0;
+
+bool isValidStatus(string status) {
+    return status == "available" || status == "busy" || status == "maintenance";
+}
+
+int findRobotIndex(string id) {
+    for (int i = 0; i < robotCount; i++) {
+        if (robots[i].robotID == id) {
+            return i;
+        }
+    }
+    return -1;
+}
 
 void addRobot() {
     if (robotCount >= MAX_ROBOTS) {
@@ -25,7 +48,13 @@ void addRobot() {
     cout << "Enter Robot ID: ";
     cin >> robots[robotCount].robotID;
 
+    if (findRobotIndex(robots[robotCount].robotID) != -1) {
+        cout << "Robot ID already exists. Please use a unique ID.\n";
+        return;
+    }
+
     robots[robotCount].status = "available";
+    robots[robotCount].currentTaskID = "-";
     robots[robotCount].taskCount = 0;
 
     robotCount++;
@@ -45,7 +74,23 @@ void displayRobots() {
         cout << i + 1 << ". "
              << robots[i].robotID
              << " | Status: " << robots[i].status
+             << " | Current Task: " << robots[i].currentTaskID
              << " | Tasks: " << robots[i].taskCount << endl;
+    }
+}
+
+void displayAssignmentHistory() {
+    cout << "\n--- Robot Assignment History ---\n";
+
+    if (assignmentCount == 0) {
+        cout << "No task assignments recorded.\n";
+        return;
+    }
+
+    for (int i = 0; i < assignmentCount; i++) {
+        cout << i + 1 << ". Task " << assignmentHistory[i].taskID
+             << " -> Robot " << assignmentHistory[i].robotID
+             << " | " << assignmentHistory[i].status << endl;
     }
 }
 
@@ -54,17 +99,60 @@ void updateRobotStatus() {
     cout << "Enter Robot ID: ";
     cin >> id;
 
-    for (int i = 0; i < robotCount; i++) {
-        if (robots[i].robotID == id) {
-            cout << "Enter new status (available/busy/maintenance): ";
-            cin >> robots[i].status;
+    int robotIndex = findRobotIndex(id);
 
-            cout << "Status updated.\n";
-            return;
+    if (robotIndex == -1) {
+        cout << "Robot not found.\n";
+        return;
+    }
+
+    string newStatus;
+    cout << "Enter new status (available/busy/maintenance): ";
+    cin >> newStatus;
+
+    if (!isValidStatus(newStatus)) {
+        cout << "Invalid status. Status must be available, busy, or maintenance.\n";
+        return;
+    }
+
+    robots[robotIndex].status = newStatus;
+
+    if (newStatus == "available" || newStatus == "maintenance") {
+        robots[robotIndex].currentTaskID = "-";
+    }
+
+    cout << "Status updated.\n";
+}
+
+void completeRobotTask() {
+    string id;
+    cout << "Enter Robot ID that completed its task: ";
+    cin >> id;
+
+    int robotIndex = findRobotIndex(id);
+
+    if (robotIndex == -1) {
+        cout << "Robot not found.\n";
+        return;
+    }
+
+    if (robots[robotIndex].status != "busy") {
+        cout << "Robot is not currently busy.\n";
+        return;
+    }
+
+    for (int i = assignmentCount - 1; i >= 0; i--) {
+        if (assignmentHistory[i].robotID == robots[robotIndex].robotID &&
+            assignmentHistory[i].taskID == robots[robotIndex].currentTaskID) {
+            assignmentHistory[i].status = "Completed";
+            break;
         }
     }
 
-    cout << "Robot not found.\n";
+    robots[robotIndex].status = "available";
+    robots[robotIndex].currentTaskID = "-";
+
+    cout << "Task completed. Robot is now available.\n";
 }
 
 void assignRobot() {
@@ -73,14 +161,32 @@ void assignRobot() {
         return;
     }
 
+    if (assignmentCount >= MAX_ASSIGNMENTS) {
+        cout << "Assignment history is full. Cannot record more assignments.\n";
+        return;
+    }
+
+    string taskID;
+    cout << "Enter Task/Order ID: ";
+    cin >> taskID;
+
     int checked = 0;
 
     while (checked < robotCount) {
         if (robots[currentIndex].status == "available") {
-            cout << "Task assigned to Robot: "
-                 << robots[currentIndex].robotID << endl;
+            int assignedIndex = currentIndex;
 
-            robots[currentIndex].taskCount++;
+            cout << "Task assigned to Robot: "
+                 << robots[assignedIndex].robotID << endl;
+
+            robots[assignedIndex].status = "busy";
+            robots[assignedIndex].currentTaskID = taskID;
+            robots[assignedIndex].taskCount++;
+
+            assignmentHistory[assignmentCount].taskID = taskID;
+            assignmentHistory[assignmentCount].robotID = robots[assignedIndex].robotID;
+            assignmentHistory[assignmentCount].status = "Assigned";
+            assignmentCount++;
 
             currentIndex = (currentIndex + 1) % robotCount;
             return;
@@ -102,6 +208,8 @@ void robotAssignmentMenu() {
         cout << "2. Assign Task to Robot\n";
         cout << "3. Update Robot Status\n";
         cout << "4. Display Robot Status\n";
+        cout << "5. Display Assignment History\n";
+        cout << "6. Complete Robot Task\n";
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
@@ -118,6 +226,12 @@ void robotAssignmentMenu() {
                 break;
             case 4:
                 displayRobots();
+                break;
+            case 5:
+                displayAssignmentHistory();
+                break;
+            case 6:
+                completeRobotTask();
                 break;
             case 0:
                 cout << "Returning to main menu...\n";
