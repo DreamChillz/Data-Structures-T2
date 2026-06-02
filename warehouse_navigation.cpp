@@ -371,6 +371,85 @@ struct WarehouseTree
         cout << "  >> Destination reached: " << targetName << "\n";
     }
 
+    //  Integration function — called by main.cpp
+    int getPathToShelf(const string &targetName, string outPath[])
+    {
+        if (root == nullptr)
+            return 0;
+
+        const int MAX_NODES = 200;
+
+        LocationNode *visited[MAX_NODES];
+        LocationNode *parentOf[MAX_NODES];
+        int visitedCount = 0;
+
+        for (int i = 0; i < MAX_NODES; i++)
+            visited[i] = parentOf[i] = nullptr;
+
+        visited[visitedCount] = root;
+        parentOf[visitedCount] = nullptr;
+        visitedCount++;
+
+        LocationQueue q;
+        q.enqueue(root);
+        LocationNode *target = nullptr;
+
+        // BFS - identical logic to bfsNavigate()
+        while (!q.isEmpty() && target == nullptr)
+        {
+            LocationNode *current = q.dequeue();
+
+            if (current->name == targetName)
+            {
+                target = current;
+                break;
+            }
+
+            LocationNode *child = current->firstChild;
+            while (child != nullptr)
+            {
+                if (visitedCount < MAX_NODES)
+                {
+                    visited[visitedCount] = child;
+                    parentOf[visitedCount] = current;
+                    visitedCount++;
+                }
+                q.enqueue(child);
+                child = child->nextSibling;
+            }
+        }
+
+        // Target not found — return 0 so caller can handle it
+        if (target == nullptr)
+            return 0;
+
+        // Reconstruct path root → target using stack
+        PathStack pathStack(MAX_NODES);
+        LocationNode *step = target;
+
+        while (step != nullptr)
+        {
+            pathStack.push(step);
+            LocationNode *par = nullptr;
+            for (int i = 0; i < visitedCount; i++)
+            {
+                if (visited[i] == step)
+                {
+                    par = parentOf[i];
+                    break;
+                }
+            }
+            step = par;
+        }
+
+        // Pop stack into outPath[] (gives forward order: root → target)
+        int count = 0;
+        while (!pathStack.isEmpty())
+            outPath[count++] = pathStack.pop()->name;
+
+        return count; // number of steps written
+    }
+
     //  Populates a sample warehouse for demo / testing.
     void loadDefaultLayout()
     {

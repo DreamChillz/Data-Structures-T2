@@ -4,23 +4,25 @@
 // Import all module files here
 #include "order_management.cpp"
 #include "robot_assignment.cpp"
-#include "robot_navigation.cpp" 
+#include "robot_navigation.cpp"
 #include "item_management.cpp"
 #include "warehouse_navigation.cpp"
 
 using namespace std;
 
-// Declare menu functions 
+// Declare menu functions
 void robotAssignmentMenu();
 void warehouseNavigationMenu();
-void robotNavigationMenu(); 
-void orderManagementMenu(); 
+void robotNavigationMenu();
+void orderManagementMenu();
 void itemManagementMenu();
 
-int main() {
+int main()
+{
     int choice;
 
-    do {
+    do
+    {
         cout << "\n--- Warehouse Robot Navigation System ---\n";
         cout << "1. Order Management\n";
         cout << "2. Robot Assignment\n";
@@ -32,48 +34,59 @@ int main() {
         cout << "Enter choice: ";
         cin >> choice;
 
-        switch (choice) {
-            case 1:
-                orderManagementMenu();
-                break;
-            case 2:
-                robotAssignmentMenu();
-                break;
-            case 3: 
-                robotNavigationMenu();
-                break;
-            case 4:
-                itemManagementMenu();
-                break;
-            case 5:
-                warehouseNavigationMenu();
-                break;
-            case 6: { 
-                // needs to add other funciton to complete the system automation 
-                cout << "\n=== INITIATING FULL SYSTEM AUTOMATION ===\n"; 
-                
-                //change to accept the location list from warehouse
-                cout << "[System] Mainframe calculated route to Shelf A1-1...\n";
-                string locationsFromTask5[] = {"Main Warehouse", "Zone A", "Aisle A1", "Shelf A1-1"}; 
-                int pathLength = 4;
+        switch (choice)
+        {
+        case 1:
+            orderManagementMenu();
+            break;
+        case 2:
+            robotAssignmentMenu();
+            break;
+        case 3:
+            robotNavigationMenu();
+            break;
+        case 4:
+            itemManagementMenu();
+            break;
+        case 5:
+            warehouseNavigationMenu();
+            break;
+        case 6:
+        {
+            // needs to add other funciton to complete the system automation
+            cout << "\n=== INITIATING FULL SYSTEM AUTOMATION ===\n";
 
-                // send the location to robot_navigation
-                // put the location list from warehouse into the funciton below
-                translateAndLoadPath(locationsFromTask5, pathLength);
-                displayForwardPath();
+            // Task 5 - load warehouse layout then generate route
+            WarehouseTree warehouse;
+            warehouse.loadDefaultLayout();
 
-                // reverse to home 
-                cout << "\n[System] Item retrieved. Executing return protocol...\n";
-                returnUsingReversePath();
-                
-                cout << "\n=== AUTOMATION COMPLETE ===\n";
+            string targetShelf = "Shelf A1-1";
+            string pathArray[200];
+            int pathLength = warehouse.getPathToShelf(targetShelf, pathArray);
+
+            if (pathLength == 0)
+            {
+                cout << "Route not found. Automation aborted.\n";
                 break;
             }
-            case 0:
-                cout << "Exiting system...\n";
-                break;
-            default:
-                cout << "Invalid choice. Please try again.\n";
+            cout << "Route generated (" << pathLength << " steps)\n";
+
+            // Task 3 — execute movement and return
+            translateAndLoadPath(pathArray, pathLength);
+            displayForwardPath();
+
+            // reverse to home
+            cout << "\n[System] Item retrieved. Executing return protocol...\n";
+            returnUsingReversePath();
+
+            cout << "\n=== AUTOMATION COMPLETE ===\n";
+            break;
+        }
+        case 0:
+            cout << "Exiting system...\n";
+            break;
+        default:
+            cout << "Invalid choice. Please try again.\n";
         }
 
     } while (choice != 0);
