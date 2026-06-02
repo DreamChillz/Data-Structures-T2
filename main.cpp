@@ -49,9 +49,10 @@ int main() {
                 warehouseNavigationMenu();
                 break;
             case 6: { 
-                cout << "\n=== INITIATING FULL SYSTEM AUTOMATION ===\n"; // needs to add other funciton to complete the system automation 
+                // needs to add other funciton to complete the system automation 
+                cout << "\n=== INITIATING FULL SYSTEM AUTOMATION ===\n"; 
                 
-                ////change to accept the location list from warehouse
+                //change to accept the location list from warehouse
                 cout << "[System] Mainframe calculated route to Shelf A1-1...\n";
                 string locationsFromTask5[] = {"Main Warehouse", "Zone A", "Aisle A1", "Shelf A1-1"}; 
                 int pathLength = 4;
