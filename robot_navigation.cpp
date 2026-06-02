@@ -68,28 +68,49 @@ string getReverseDirection(string dir) {
 // INTEGRATION FUNCTION (For Option 6: Full System Run)
 // ---------------------------------------------------------
 // Your teammates will call this function to instantly load the path
-void autoLoadPath(string generatedDirections[], int stepCount) {
-    // Clear previous logs if a previous job was finished
+void translateAndLoadPath(string locationPath[], int pathLength) {
+    // 1. Clear previous logs if a previous job was finished
     if (nav_isReturned) {
         nav_robotPath.clear();
         nav_logCount = 0;
         nav_isReturned = false;
     }
 
-    cout << "\n[Robot Navigation] Receiving route from Warehouse Mainframe...\n";
-    
-    // Automatically push all directions into the stack and log
-    for(int i = 0; i < stepCount; i++) {
+    cout << "\n[Robot Navigation] Translating map route into physical movements...\n";
+
+    // 2. Translate locations and push to Stack
+    // We start at i = 1 to skip "Main Warehouse" (robot is already there)
+    for (int i = 1; i < pathLength; i++) {
         if (nav_logCount >= 200) {
             cout << "Navigation log full! Stopping early.\n";
             break;
         }
-        nav_robotPath.push(generatedDirections[i]);
-        nav_movementLog[nav_logCount++] = generatedDirections[i];
-        
-        cout << " -> Auto-recording step: " << generatedDirections[i] << "\n";
+
+        string loc = locationPath[i];
+        string physicalDir = "";
+
+        // Translation Rules
+        if (loc.find("Zone") != string::npos) {
+            physicalDir = "Forward";
+        } 
+        else if (loc.find("A1") != string::npos || loc.find("B1") != string::npos || loc.find("C1") != string::npos) {
+            if (loc.find("Aisle") != string::npos) physicalDir = "Turn Left";
+            else if (loc.find("Shelf") != string::npos) physicalDir = "Forward";
+        } 
+        else if (loc.find("A2") != string::npos || loc.find("C2") != string::npos) {
+            if (loc.find("Aisle") != string::npos) physicalDir = "Turn Right";
+            else if (loc.find("Shelf") != string::npos) physicalDir = "Forward";
+        }
+
+        // Push to Stack and Log
+        if (physicalDir != "") {
+            nav_robotPath.push(physicalDir);
+            nav_movementLog[nav_logCount++] = physicalDir;
+            cout << " -> Translated [" << loc << "] into: " << physicalDir << "\n";
+        }
     }
-    cout << "[Robot Navigation] Route loaded. Robot has reached the item.\n";
+    
+    cout << "[Robot Navigation] Route translated and loaded. Robot has reached the item.\n";
 }
 
 // ---------------------------------------------------------
