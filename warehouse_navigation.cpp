@@ -3,12 +3,14 @@
 #include <string>
 using namespace std;
 
+//  SECTION 1 — TREE NODE
+
 struct LocationNode
 {
-    string name;               // e.g. "Zone A", "Aisle 1", "Shelf 3"
-    string type;               // "warehouse", "zone", "aisle", "shelf"
-    LocationNode *firstChild;  // pointer to first child
-    LocationNode *nextSibling; // pointer to next sibling
+    string name;               // e.g. "Zone A", "Aisle A1", "Shelf A1-2"
+    string type;               // "warehouse" | "zone" | "aisle" | "shelf"
+    LocationNode *firstChild;  // leftmost child in the hierarchy
+    LocationNode *nextSibling; // next node at the same level
 
     LocationNode(string n, string t)
     {
@@ -19,7 +21,8 @@ struct LocationNode
     }
 };
 
-// Queue node used for BFS traversal
+//  SECTION 2 — QUEUE  (for BFS)
+
 struct QueueNode
 {
     LocationNode *location;
@@ -32,7 +35,6 @@ struct QueueNode
     }
 };
 
-// Simple queue for BFS
 struct LocationQueue
 {
     QueueNode *front;
@@ -44,17 +46,14 @@ struct LocationQueue
         rear = nullptr;
     }
 
-    // Check if queue is empty
-    bool isEmpty() { return front == nullptr; }
+    bool isEmpty() const { return front == nullptr; }
 
-    // Add a location to the back of the queue
+    // Add a location pointer to the back of the queue
     void enqueue(LocationNode *loc)
     {
         QueueNode *newNode = new QueueNode(loc);
         if (rear == nullptr)
-        {
             front = rear = newNode;
-        }
         else
         {
             rear->next = newNode;
@@ -62,11 +61,12 @@ struct LocationQueue
         }
     }
 
-    // Remove and return the front location
+    // Remove and return the front location pointer
     LocationNode *dequeue()
     {
         if (isEmpty())
             return nullptr;
+
         QueueNode *temp = front;
         LocationNode *loc = temp->location;
         front = front->next;
@@ -75,9 +75,24 @@ struct LocationQueue
         delete temp;
         return loc;
     }
+
+    // Count how many nodes are currently in the queue
+    // Used by bfsDisplay() to process one level at a time
+    int size() const
+    {
+        int count = 0;
+        QueueNode *cur = front;
+        while (cur != nullptr)
+        {
+            ++count;
+            cur = cur->next;
+        }
+        return count;
+    }
 };
 
-// Path stack used to record BFS parent trail
+//  SECTION 3 — STACK  (for path reconstruction)
+
 struct PathStack
 {
     LocationNode **data;
@@ -93,32 +108,41 @@ struct PathStack
 
     ~PathStack() { delete[] data; }
 
-    bool isEmpty() { return top == -1; }
+    bool isEmpty() const { return top == -1; }
+    bool isFull() const { return top == capacity - 1; }
 
+    // Push a location pointer onto the stack
     void push(LocationNode *loc)
     {
-        if (top < capacity - 1)
+        if (!isFull())
             data[++top] = loc;
     }
 
+    // Pop and return the top pointer
     LocationNode *pop()
     {
-        if (isEmpty())
-            return nullptr;
-        return data[top--];
+        return isEmpty() ? nullptr : data[top--];
     }
 
-    LocationNode *peek() { return isEmpty() ? nullptr : data[top]; }
+    LocationNode *peek() const
+    {
+        return isEmpty() ? nullptr : data[top];
+    }
 };
+
+//  SECTION 4 — WAREHOUSE TREE
 
 struct WarehouseTree
 {
-    LocationNode *root; 
+    LocationNode *root;
 
-    WarehouseTree() : root(nullptr) {}
+    WarehouseTree()
+    {
+        root = nullptr;
+    }
 
-    // Create the root warehouse node
-    void initWarehouse(string warehouseName)
+    //  initWarehouse
+    void initWarehouse(const string &warehouseName)
     {
         if (root != nullptr)
         {
@@ -129,7 +153,7 @@ struct WarehouseTree
         cout << "Warehouse \"" << warehouseName << "\" created.\n";
     }
 
-    // find a node by name using BFS
+    //  findNode  (BFS search)
     LocationNode *findNode(const string &name)
     {
         if (root == nullptr)
@@ -141,11 +165,10 @@ struct WarehouseTree
         while (!q.isEmpty())
         {
             LocationNode *current = q.dequeue();
-
             if (current->name == name)
                 return current;
 
-            // Enqueue all children
+            // Enqueue all children of current node
             LocationNode *child = current->firstChild;
             while (child != nullptr)
             {
@@ -153,17 +176,16 @@ struct WarehouseTree
                 child = child->nextSibling;
             }
         }
-        return nullptr; // not found
+        return nullptr;
     }
 
-    // Add a child node under a given parent
-    void addLocation(const string &parentName,
-                     const string &childName,
-                     const string &childType)
+    //  addLocation
+    //  Inserts a new child node under an existing parent.
+    void addLocation(const string &parentName, const string &childName, const string &childType)
     {
         if (root == nullptr)
         {
-            cout << "Warehouse not initialised. Please create warehouse first.\n";
+            cout << "Warehouse not initialised. Create warehouse first.\n";
             return;
         }
 
@@ -174,30 +196,22 @@ struct WarehouseTree
             return;
         }
 
-        // Enforce rules:
-        // warehouse -> zone -> aisle -> shelf
-        bool validHierarchy = false;
-        if (parent->type == "warehouse" && childType == "zone")
-            validHierarchy = true;
-        else if (parent->type == "zone" && childType == "aisle")
-            validHierarchy = true;
-        else if (parent->type == "aisle" && childType == "shelf")
-            validHierarchy = true;
+        // Validate parent→child type pairing
+        bool validPair = (parent->type == "warehouse" && childType == "zone") ||
+                         (parent->type == "zone" && childType == "aisle") ||
+                         (parent->type == "aisle" && childType == "shelf");
 
-        if (!validHierarchy)
+        if (!validPair)
         {
-            cout << "Invalid hierarchy: cannot add type \"" << childType
-                 << "\" under \"" << parent->type << "\".\n";
-            cout << "Allowed rules:\n";
-            cout << "  warehouse -> zone\n";
-            cout << "  zone      -> aisle\n";
-            cout << "  aisle     -> shelf\n";
+            cout << "Invalid hierarchy: cannot add type \""
+                 << childType << "\" under \"" << parent->type << "\".\n";
+            cout << "    Allowed: warehouse→zone | zone→aisle | aisle→shelf\n";
             return;
         }
 
         LocationNode *newLoc = new LocationNode(childName, childType);
 
-        // Insert as the last sibling of parent's children
+        // Append as last sibling under parent
         if (parent->firstChild == nullptr)
         {
             parent->firstChild = newLoc;
@@ -214,24 +228,7 @@ struct WarehouseTree
              << "\" added under \"" << parentName << "\".\n";
     }
 
-    //  Display the full warehouse layout
-    void dfsDisplay(LocationNode *node, int depth)
-    {
-        if (node == nullptr)
-            return;
-
-        // Print indentation + tree connector
-        for (int i = 0; i < depth; i++)
-            cout << "    ";
-        cout << "|-- [" << node->type << "] " << node->name << "\n";
-
-        // Recurse into children (first child)
-        dfsDisplay(node->firstChild, depth + 1);
-
-        // Recurse into siblings
-        dfsDisplay(node->nextSibling, depth);
-    }
-
+    //  displayLayout  (DFS — depth-first, pre-order)
     void displayLayout()
     {
         if (root == nullptr)
@@ -239,108 +236,12 @@ struct WarehouseTree
             cout << "Warehouse is empty.\n";
             return;
         }
-        cout << "\n--- Warehouse Layout (DFS Traversal) ---\n";
+        cout << "\n=== Warehouse Layout (DFS - Pre-order) ===\n";
         cout << "[warehouse] " << root->name << "\n";
-        dfsDisplay(root->firstChild, 1);
+        dfsHelper(root->firstChild, 1);
     }
 
-    // BFS: Find and print the path from root to a target node
-    void bfsNavigate(const string &targetName)
-    {
-        if (root == nullptr)
-        {
-            cout << "Warehouse is empty.\n";
-            return;
-        }
-
-        const int MAX_NODES = 200;
-
-        // Arrays to track visited nodes and their parents for path reconstruction
-        LocationNode *visited[MAX_NODES];
-        LocationNode *parent[MAX_NODES];
-        int visitedCount = 0;
-
-        // Initialise all parent entries to nullptr
-        for (int i = 0; i < MAX_NODES; i++)
-        {
-            visited[i] = nullptr;
-            parent[i] = nullptr;
-        }
-
-        visited[visitedCount] = root;
-        parent[visitedCount] = nullptr;
-        visitedCount++;
-
-        LocationQueue q;
-        q.enqueue(root);
-
-        LocationNode *target = nullptr;
-
-        // BFS loop
-        while (!q.isEmpty())
-        {
-            LocationNode *current = q.dequeue();
-
-            if (current->name == targetName)
-            {
-                target = current;
-                break;
-            }
-
-            LocationNode *child = current->firstChild;
-            while (child != nullptr)
-            {
-                // Record child and its parent
-                visited[visitedCount] = child;
-                parent[visitedCount] = current;
-                visitedCount++;
-
-                q.enqueue(child);
-                child = child->nextSibling;
-            }
-        }
-
-        if (target == nullptr)
-        {
-            cout << "Location \"" << targetName << "\" not found.\n";
-            return;
-        }
-
-        // Reconstruct path from target back to root using parent array
-        // Store path in a stack then print in forward order
-        PathStack pathStack(MAX_NODES);
-        LocationNode *step = target;
-
-        while (step != nullptr)
-        {
-            pathStack.push(step);
-
-            // Find parent of step
-            LocationNode *par = nullptr;
-            for (int i = 0; i < visitedCount; i++)
-            {
-                if (visited[i] == step)
-                {
-                    par = parent[i];
-                    break;
-                }
-            }
-            step = par;
-        }
-
-        // Print path forward (root -> ... -> target)
-        cout << "\n--- Navigation Route to \"" << targetName << "\" (BFS) ---\n";
-        int stepNum = 1;
-        while (!pathStack.isEmpty())
-        {
-            LocationNode *loc = pathStack.pop();
-            cout << "Step " << stepNum++ << ": ["
-                 << loc->type << "] " << loc->name << "\n";
-        }
-        cout << "Destination reached: " << targetName << "\n";
-    }
-
-    // BFS: Level-order display (shows tree level by level)
+    //  bfsDisplay  (BFS — level-order)
     void bfsDisplay()
     {
         if (root == nullptr)
@@ -349,35 +250,25 @@ struct WarehouseTree
             return;
         }
 
-        cout << "\n--- Warehouse Layout (BFS Level-Order) ---\n";
+        cout << "\n=== Warehouse Layout (BFS - Level-Order) ===\n";
+
         LocationQueue q;
         q.enqueue(root);
         int level = 0;
 
         while (!q.isEmpty())
         {
-            // Count nodes at current level
-            int levelSize = 0;
-            LocationQueue temp;
-
-            // We cannot check size directly, so we use a second pass trick:
-            // Drain q into temp to count, then restore
-            while (!q.isEmpty())
-            {
-                LocationNode *n = q.dequeue();
-                temp.enqueue(n);
-                levelSize++;
-            }
-
+            int levelSize = q.size(); // nodes at current level
             cout << "Level " << level << ": ";
+
             for (int i = 0; i < levelSize; i++)
             {
-                LocationNode *current = temp.dequeue();
-                cout << current->name;
+                LocationNode *current = q.dequeue();
+                cout << "[" << current->type << "] " << current->name;
                 if (i < levelSize - 1)
                     cout << "  |  ";
 
-                // Re-enqueue children for next level
+                // Enqueue children for the next level
                 LocationNode *child = current->firstChild;
                 while (child != nullptr)
                 {
@@ -390,50 +281,147 @@ struct WarehouseTree
         }
     }
 
-    // Load a default warehouse layout for demonstration
+    //  bfsNavigate
+    //  Finds a route from the warehouse root to targetName
+    void bfsNavigate(const string &targetName)
+    {
+        if (root == nullptr)
+        {
+            cout << "Warehouse is empty.\n";
+            return;
+        }
+
+        const int MAX_NODES = 200;
+
+        LocationNode *visited[MAX_NODES];
+        LocationNode *parentOf[MAX_NODES];
+        int visitedCount = 0;
+
+        for (int i = 0; i < MAX_NODES; i++)
+            visited[i] = parentOf[i] = nullptr;
+
+        visited[visitedCount] = root;
+        parentOf[visitedCount] = nullptr;
+        visitedCount++;
+
+        LocationQueue q;
+        q.enqueue(root);
+        LocationNode *target = nullptr;
+
+        // stop as soon as target is found
+        while (!q.isEmpty() && target == nullptr)
+        {
+            LocationNode *current = q.dequeue();
+
+            if (current->name == targetName)
+            {
+                target = current;
+                break;
+            }
+
+            LocationNode *child = current->firstChild;
+            while (child != nullptr)
+            {
+                if (visitedCount < MAX_NODES)
+                {
+                    visited[visitedCount] = child;
+                    parentOf[visitedCount] = current;
+                    visitedCount++;
+                }
+                q.enqueue(child);
+                child = child->nextSibling;
+            }
+        }
+
+        if (target == nullptr)
+        {
+            cout << "Location \"" << targetName << "\" not found.\n";
+            return;
+        }
+
+        // Walk parent pointers from target → root, push onto stack
+        PathStack pathStack(MAX_NODES);
+        LocationNode *step = target;
+
+        while (step != nullptr)
+        {
+            pathStack.push(step);
+
+            // Look up the parent of 'step'
+            LocationNode *par = nullptr;
+            for (int i = 0; i < visitedCount; i++)
+            {
+                if (visited[i] == step)
+                {
+                    par = parentOf[i];
+                    break;
+                }
+            }
+            step = par;
+        }
+
+        cout << "\n=== Navigation Route to \"" << targetName << "\" (BFS) ===\n";
+        int stepNum = 1;
+        while (!pathStack.isEmpty())
+        {
+            LocationNode *loc = pathStack.pop();
+            cout << "  Step " << stepNum++ << ": ["
+                 << loc->type << "] " << loc->name << "\n";
+        }
+        cout << "  >> Destination reached: " << targetName << "\n";
+    }
+
+    //  Populates a sample warehouse for demo / testing.
     void loadDefaultLayout()
     {
         initWarehouse("Main Warehouse");
 
-        // Zones
+        // --- Zones ---
         addLocation("Main Warehouse", "Zone A", "zone");
         addLocation("Main Warehouse", "Zone B", "zone");
         addLocation("Main Warehouse", "Zone C", "zone");
 
-        // Zone A aisles
+        // --- Zone A ---
         addLocation("Zone A", "Aisle A1", "aisle");
         addLocation("Zone A", "Aisle A2", "aisle");
-
-        // Zone B aisles
-        addLocation("Zone B", "Aisle B1", "aisle");
-
-        // Zone C aisles
-        addLocation("Zone C", "Aisle C1", "aisle");
-        addLocation("Zone C", "Aisle C2", "aisle");
-
-        // Shelves under Aisle A1
         addLocation("Aisle A1", "Shelf A1-1", "shelf");
         addLocation("Aisle A1", "Shelf A1-2", "shelf");
         addLocation("Aisle A1", "Shelf A1-3", "shelf");
-
-        // Shelves under Aisle A2
         addLocation("Aisle A2", "Shelf A2-1", "shelf");
         addLocation("Aisle A2", "Shelf A2-2", "shelf");
 
-        // Shelves under Aisle B1
+        // --- Zone B ---
+        addLocation("Zone B", "Aisle B1", "aisle");
         addLocation("Aisle B1", "Shelf B1-1", "shelf");
         addLocation("Aisle B1", "Shelf B1-2", "shelf");
 
-        // Shelves under Aisle C1
+        // --- Zone C ---
+        addLocation("Zone C", "Aisle C1", "aisle");
+        addLocation("Zone C", "Aisle C2", "aisle");
         addLocation("Aisle C1", "Shelf C1-1", "shelf");
-
-        // Shelves under Aisle C2
         addLocation("Aisle C2", "Shelf C2-1", "shelf");
         addLocation("Aisle C2", "Shelf C2-2", "shelf");
 
-        cout << "\nDefault warehouse layout loaded successfully.\n";
+        cout << "\nDefault warehouse layout loaded.\n";
+    }
+
+private:
+    void dfsHelper(LocationNode *node, int depth)
+    {
+        if (node == nullptr)
+            return;
+
+        // Indent to show depth
+        for (int i = 0; i < depth; i++)
+            cout << "    ";
+        cout << "|-- [" << node->type << "] " << node->name << "\n";
+
+        dfsHelper(node->firstChild, depth + 1); // go deeper
+        dfsHelper(node->nextSibling, depth);    // stay at same level
     }
 };
+
+//  SECTION 5 — MENU
 
 void warehouseNavigationMenu()
 {
@@ -452,7 +440,7 @@ void warehouseNavigationMenu()
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
-        cin.ignore(); // clear leftover newline from cin >> choice
+        cin.ignore();
 
         switch (choice)
         {
@@ -485,7 +473,7 @@ void warehouseNavigationMenu()
         case 5:
         {
             string target;
-            cout << "Enter destination location name: ";
+            cout << "Enter destination name: ";
             getline(cin, target);
             warehouse.bfsNavigate(target);
             break;
@@ -497,7 +485,8 @@ void warehouseNavigationMenu()
             cout << "Returning to main menu...\n";
             break;
         default:
-            cout << "Invalid choice.\n";
+            cout << "Invalid choice. Try again.\n";
         }
+
     } while (choice != 0);
 }
