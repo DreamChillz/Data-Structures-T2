@@ -14,8 +14,8 @@ using namespace std;
 void robotAssignmentMenu();
 void warehouseNavigationMenu();
 void robotNavigationMenu(); 
-// void orderManagementMenu(); // Uncomment when your teammate finishes Task 1
-// void itemManagementMenu();  // Uncomment when your teammate finishes Task 4
+void orderManagementMenu(); 
+void itemManagementMenu();
 
 int main() {
     int choice;
@@ -34,7 +34,7 @@ int main() {
 
         switch (choice) {
             case 1:
-                // add orderManagementMenu();
+                orderManagementMenu();
                 break;
             case 2:
                 robotAssignmentMenu();
@@ -43,7 +43,7 @@ int main() {
                 robotNavigationMenu();
                 break;
             case 4:
-                // add itemManagementMenu();
+                itemManagementMenu();
                 break;
             case 5:
                 warehouseNavigationMenu();
