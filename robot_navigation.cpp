@@ -61,12 +61,41 @@ string getReverseDirection(string dir) {
     if (dir == "Backward") return "Forward";
     if (dir == "Turn Left") return "Turn Right";
     if (dir == "Turn Right") return "Turn Left";
+    if (dir == "East") return "West";
+    if (dir == "West") return "East";
+    if (dir == "South") return "North";
+    if (dir == "North") return "South";
     return dir; 
 }
 
 // ---------------------------------------------------------
 // INTEGRATION FUNCTION (For Option 6: Full System Run)
 // ---------------------------------------------------------
+// Load the directions calculated by warehouse_navigation directly
+void loadDirectionsDirectly(string directions[], int dirLength) {
+    if (nav_isReturned) {
+        nav_robotPath.clear();
+        nav_logCount = 0;
+        nav_isReturned = false;
+    }
+
+    cout << "\n[Robot Navigation] Loading calculated directions into robot path...\n";
+    for (int i = 0; i < dirLength; i++) {
+        if (nav_logCount >= 200) {
+            cout << "Navigation log full! Stopping early.\n";
+            break;
+        }
+
+        string physicalDir = directions[i];
+        if (physicalDir != "Stay") {
+            nav_robotPath.push(physicalDir);
+            nav_movementLog[nav_logCount++] = physicalDir;
+            cout << " -> Loaded direction: " << physicalDir << "\n";
+        }
+    }
+    cout << "[Robot Navigation] Route directions loaded. Robot has reached the item.\n";
+}
+
 // Your teammates will call this function to instantly load the path
 void translateAndLoadPath(string locationPath[], int pathLength) {
     // 1. Clear previous logs if a previous job was finished
@@ -133,6 +162,12 @@ void recordMovement() {
     cout << "\n--- Record Movement Step ---\n";
     cout << "1. Forward\n2. Backward\n3. Turn Left\n4. Turn Right\nSelect direction: ";
     cin >> dirChoice;
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(1000, '\n');
+        cout << "Invalid input. Please enter a number.\n";
+        return;
+    }
 
     string dir = "";
     switch(dirChoice) {
@@ -205,6 +240,14 @@ void robotNavigationMenu() {
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
+        if (cin.fail()) {
+            if (cin.eof()) { choice = 0; break; } // EOF: exit menu
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = -1;
+        } else {
+            cin.ignore();
+        }
 
         switch (choice) {
             case 1: recordMovement(); break;

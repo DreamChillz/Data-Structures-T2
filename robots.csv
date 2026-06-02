@@ -1,0 +1,4 @@
+RobotID,Status,CurrentTaskID,TaskCount
+ROBOT_01,available,-,12
+ROBOT_02,available,-,2
+ROBOT_03,available,-,1

@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <string>
+#include <fstream>
+#include <sstream>
 using namespace std;
 
 const int MAX_ROBOTS = 5;
@@ -39,6 +41,81 @@ int findRobotIndex(string id) {
     return -1;
 }
 
+void saveRobotsToCSV() {
+    ofstream file("robots.csv");
+    if (!file.is_open()) {
+        cout << "[Robot Assignment] Warning: Could not open robots.csv for writing.\n";
+        return;
+    }
+    file << "RobotID,Status,CurrentTaskID,TaskCount\n";
+    for (int i = 0; i < robotCount; i++) {
+        file << robots[i].robotID << ","
+             << robots[i].status << ","
+             << robots[i].currentTaskID << ","
+             << robots[i].taskCount << "\n";
+    }
+    file.close();
+}
+
+void loadDefaultRobots() {
+    // Clear first to prevent duplication
+    robotCount = 0;
+    robots[0] = {"ROBOT_01", "available", "-", 0};
+    robots[1] = {"ROBOT_02", "available", "-", 0};
+    robots[2] = {"ROBOT_03", "available", "-", 0};
+    robotCount = 3;
+    currentIndex = 0;
+    cout << "Default robots (ROBOT_01, ROBOT_02, ROBOT_03) loaded successfully.\n";
+}
+
+void loadRobotsFromCSV() {
+    robotCount = 0;
+    currentIndex = 0;
+
+    ifstream file("robots.csv");
+    if (!file.is_open()) {
+        // If file doesn't exist, load defaults and write to CSV
+        loadDefaultRobots();
+        saveRobotsToCSV();
+        return;
+    }
+
+    string line;
+    if (!getline(file, line)) {
+        file.close();
+        return;
+    }
+
+    while (getline(file, line)) {
+        if (line.empty()) continue;
+        stringstream ss(line);
+        string id, status, taskID, taskCountStr;
+        
+        getline(ss, id, ',');
+        getline(ss, status, ',');
+        getline(ss, taskID, ',');
+        getline(ss, taskCountStr, ',');
+
+        if (!id.empty() && robotCount < MAX_ROBOTS) {
+            int tCount = 0;
+            try {
+                if (!taskCountStr.empty()) {
+                    tCount = stoi(taskCountStr);
+                }
+            } catch (...) {
+                tCount = 0;
+            }
+
+            robots[robotCount].robotID = id;
+            robots[robotCount].status = status;
+            robots[robotCount].currentTaskID = taskID;
+            robots[robotCount].taskCount = tCount;
+            robotCount++;
+        }
+    }
+    file.close();
+}
+
 void addRobot() {
     if (robotCount >= MAX_ROBOTS) {
         cout << "Robot list is full.\n";
@@ -58,6 +135,7 @@ void addRobot() {
     robots[robotCount].taskCount = 0;
 
     robotCount++;
+    saveRobotsToCSV();
 
     cout << "Robot added successfully.\n";
 }
@@ -121,6 +199,7 @@ void updateRobotStatus() {
         robots[robotIndex].currentTaskID = "-";
     }
 
+    saveRobotsToCSV();
     cout << "Status updated.\n";
 }
 
@@ -152,6 +231,7 @@ void completeRobotTask() {
     robots[robotIndex].status = "available";
     robots[robotIndex].currentTaskID = "-";
 
+    saveRobotsToCSV();
     cout << "Task completed. Robot is now available.\n";
 }
 
@@ -189,6 +269,7 @@ void assignRobot() {
             assignmentCount++;
 
             currentIndex = (currentIndex + 1) % robotCount;
+            saveRobotsToCSV();
             return;
         }
 
@@ -199,7 +280,45 @@ void assignRobot() {
     cout << "No available robot. All robots are busy or under maintenance.\n";
 }
 
+string assignRobotProgrammatically(string taskID) {
+    if (robotCount == 0) {
+        return "";
+    }
+
+    if (assignmentCount >= MAX_ASSIGNMENTS) {
+        return "";
+    }
+
+    int checked = 0;
+
+    while (checked < robotCount) {
+        if (robots[currentIndex].status == "available") {
+            int assignedIndex = currentIndex;
+
+            robots[assignedIndex].status = "busy";
+            robots[assignedIndex].currentTaskID = taskID;
+            robots[assignedIndex].taskCount++;
+
+            assignmentHistory[assignmentCount].taskID = taskID;
+            assignmentHistory[assignmentCount].robotID = robots[assignedIndex].robotID;
+            assignmentHistory[assignmentCount].status = "Assigned";
+            assignmentCount++;
+
+            string assignedID = robots[assignedIndex].robotID;
+            currentIndex = (currentIndex + 1) % robotCount;
+            saveRobotsToCSV();
+            return assignedID;
+        }
+
+        currentIndex = (currentIndex + 1) % robotCount;
+        checked++;
+    }
+
+    return "";
+}
+
 void robotAssignmentMenu() {
+    loadRobotsFromCSV();
     int choice;
 
     do {
@@ -210,9 +329,18 @@ void robotAssignmentMenu() {
         cout << "4. Display Robot Status\n";
         cout << "5. Display Assignment History\n";
         cout << "6. Complete Robot Task\n";
+        cout << "7. Load Default Robots (Demo)\n";
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
+        if (cin.fail()) {
+            if (cin.eof()) { choice = 0; break; } // EOF: exit menu
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = -1;
+        } else {
+            cin.ignore(); // consume trailing newline
+        }
 
         switch (choice) {
             case 1:
@@ -232,6 +360,10 @@ void robotAssignmentMenu() {
                 break;
             case 6:
                 completeRobotTask();
+                break;
+            case 7:
+                loadDefaultRobots();
+                saveRobotsToCSV();
                 break;
             case 0:
                 cout << "Returning to main menu...\n";
