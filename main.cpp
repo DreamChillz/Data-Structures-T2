@@ -200,6 +200,7 @@ int main() {
                     if (robotIndex != -1) {
                         robots[robotIndex].status = "available";
                         robots[robotIndex].currentTaskID = "-";
+                        updateAssignmentStatus(to_string(currentOrder.orderID), robotID, "Failed: Path Not Found");
                         saveRobotsToCSV();
                     }
                     
@@ -255,6 +256,7 @@ int main() {
                             if (robotIndex != -1) {
                                 robots[robotIndex].status = "available";
                                 robots[robotIndex].currentTaskID = "-";
+                                updateAssignmentStatus(to_string(currentOrder.orderID), robotID, "Failed: Obstacle");
                                 saveRobotsToCSV();
                             }
                             break; // End the simulation loop
@@ -279,14 +281,7 @@ int main() {
                         robots[robotIndex].currentTaskID = "-";
                         saveRobotsToCSV();
                         
-                        // Update assignment record status
-                        for (int i = assignmentCount - 1; i >= 0; i--) {
-                            if (assignmentHistory[i].robotID == robotID &&
-                                assignmentHistory[i].taskID == to_string(currentOrder.orderID)) {
-                                assignmentHistory[i].status = "Completed";
-                                break;
-                            }
-                        }
+                        updateAssignmentStatus(to_string(currentOrder.orderID), robotID, "Completed");
                     }
                     
                     // deduct stock 
@@ -307,6 +302,7 @@ int main() {
                     cout << "\n=== AUTOMATION COMPLETE ===\n";
                     break;
                 }
+                break;
 
             }
             case 0:

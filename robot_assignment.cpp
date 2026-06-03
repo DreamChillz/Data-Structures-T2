@@ -317,6 +317,16 @@ string assignRobotProgrammatically(string taskID) {
     return "";
 }
 
+void updateAssignmentStatus(string taskID, string robotID, string newStatus) {
+    for (int i = assignmentCount - 1; i >= 0; i--) {
+        if (assignmentHistory[i].taskID == taskID &&
+            assignmentHistory[i].robotID == robotID) {
+            assignmentHistory[i].status = newStatus;
+            return;
+        }
+    }
+}
+
 void robotAssignmentMenu() {
     loadRobotsFromCSV();
     int choice;
