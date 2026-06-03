@@ -168,18 +168,6 @@ struct WarehouseTree
         obstacleCount = 0;
     }
 
-    //  initWarehouse
-    void initWarehouse(const string &warehouseName)
-    {
-        if (root != nullptr)
-        {
-            cout << "Warehouse already initialised.\n";
-            return;
-        }
-        root = new LocationNode(warehouseName, "warehouse");
-        cout << "Warehouse \"" << warehouseName << "\" created.\n";
-    }
-
     //  findNode  (BFS — visits all nodes regardless of isBlocked)
     LocationNode *findNode(const string &name)
     {
@@ -694,17 +682,10 @@ struct WarehouseTree
     }
 
     //  loadDefaultLayout — builds sample warehouse and assigns 2-D coordinates
-    //
-    //  Grid layout (row x col):
-    //       0     1     2     3     4     5     6     7     8     9
-    //  [0]                          WH
-    //  [1]        ZA                      ZB               ZC
-    //  [2]  A1         A2               AB1         AC1         AC2
-    //  [3]  A1-1 A1-2 A1-3 A2-1 A2-2 B1-1 B1-2 C1-1 C2-1 C2-2
     void loadDefaultLayout()
     {
         clear();
-        initWarehouse("Main Warehouse");
+        root = new LocationNode("Main Warehouse", "warehouse");
 
         // --- Zones ---
         addLocation("Main Warehouse", "Zone A", "zone");
@@ -822,13 +803,12 @@ void warehouseNavigationMenu()
     do
     {
         cout << "\n--- Warehouse Layout & Navigation Menu ---\n";
-        cout << "1. Initialise Warehouse\n";
-        cout << "2. Add Location (Zone / Aisle / Shelf)\n";
-        cout << "3. Display Layout (DFS)\n";
-        cout << "4. Display Layout (BFS Level-Order)\n";
-        cout << "5. Navigate to Location (BFS Pathfinding)\n";
-        cout << "6. Load Default Layout (Demo)\n";
-        cout << "7. Display 2D Grid Map\n";
+        cout << "1. Add Location (Zone / Aisle / Shelf)\n";
+        cout << "2. Display Layout (DFS)\n";
+        cout << "3. Display Layout (BFS Level-Order)\n";
+        cout << "4. Navigate to Location (BFS Pathfinding)\n";
+        cout << "5. Reset to Default Layout\n";
+        cout << "6. Display 2D Grid Map\n";
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
@@ -845,14 +825,6 @@ void warehouseNavigationMenu()
         {
         case 1:
         {
-            string name;
-            cout << "Enter warehouse name: ";
-            getline(cin, name);
-            globalWarehouse.initWarehouse(name);
-            break;
-        }
-        case 2:
-        {
             string parent, child, type;
             cout << "Enter parent location name: ";
             getline(cin, parent);
@@ -863,13 +835,13 @@ void warehouseNavigationMenu()
             globalWarehouse.addLocation(parent, child, type);
             break;
         }
-        case 3:
+        case 2:
             globalWarehouse.displayLayout();
             break;
-        case 4:
+        case 3:
             globalWarehouse.bfsDisplay();
             break;
-        case 5:
+        case 4:
         {
             string target;
             cout << "Enter destination name: ";
@@ -877,10 +849,10 @@ void warehouseNavigationMenu()
             globalWarehouse.bfsNavigate(target);
             break;
         }
-        case 6:
+        case 5:
             globalWarehouse.loadDefaultLayout();
             break;
-        case 7:
+        case 6:
             globalWarehouse.displayGrid();
             break;
         case 0:
