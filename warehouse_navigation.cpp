@@ -648,7 +648,8 @@ struct WarehouseTree
         return count;
     }
 
-    //  converts a name path into cardinal directions using x,y coords
+    //  getDirections — converts a logical name path into physical step-by-step directions.
+    //  Expands logical jumps into true grid movements (Manhattan Routing).
     int getDirections(string pathNames[], int pathLen, string outDirs[])
     {
         int count = 0;
@@ -657,29 +658,49 @@ struct WarehouseTree
             LocationNode *curr = findNode(pathNames[i]);
             LocationNode *next = findNode(pathNames[i + 1]);
 
-            // Fallback if coordinates are not set on either node
+            // Fallback if coordinates are not set
             if (!curr || !next || curr->x < 0 || next->x < 0)
             {
                 outDirs[count++] = "Forward";
                 continue;
             }
 
-            int dx = next->x - curr->x;
-            int dy = next->y - curr->y;
+            int currentX = curr->x;
+            int currentY = curr->y;
+            int targetX = next->x;
+            int targetY = next->y;
 
-            string dir;
-            if (dx == 0 && dy == 0)    dir = "Stay";
-            else if (abs(dx) >= abs(dy))
-                dir = (dx > 0) ? "East" : "West";
-            else
-                dir = (dy > 0) ? "South" : "North";
+            // 1. Move along the X-axis step-by-step
+            while (currentX < targetX) {
+                outDirs[count++] = "East";
+                currentX++;
+            }
+            while (currentX > targetX) {
+                outDirs[count++] = "West";
+                currentX--;
+            }
 
-            outDirs[count++] = dir;
+            // 2. Move along the Y-axis step-by-step
+            while (currentY < targetY) {
+                outDirs[count++] = "South";
+                currentY++;
+            }
+            while (currentY > targetY) {
+                outDirs[count++] = "North";
+                currentY--;
+            }
         }
         return count;
     }
 
-    // builds sample warehouse and assigns 2-D coordinates
+    //  loadDefaultLayout — builds sample warehouse and assigns 2-D coordinates
+    //
+    //  Grid layout (row x col):
+    //       0     1     2     3     4     5     6     7     8     9
+    //  [0]                          WH
+    //  [1]        ZA                      ZB               ZC
+    //  [2]  A1         A2               AB1         AC1         AC2
+    //  [3]  A1-1 A1-2 A1-3 A2-1 A2-2 B1-1 B1-2 C1-1 C2-1 C2-2
     void loadDefaultLayout()
     {
         clear();
@@ -801,12 +822,13 @@ void warehouseNavigationMenu()
     do
     {
         cout << "\n--- Warehouse Layout & Navigation Menu ---\n";
-        cout << "1. Add Location (Zone / Aisle / Shelf)\n";
-        cout << "2. Display Layout (DFS)\n";
-        cout << "3. Display Layout (BFS Level-Order)\n";
-        cout << "4. Navigate to Location (BFS Pathfinding)\n";
-        cout << "5. Reset to Default Layout\n";
-        cout << "6. Display 2D Grid Map\n";
+        cout << "1. Initialise Warehouse\n";
+        cout << "2. Add Location (Zone / Aisle / Shelf)\n";
+        cout << "3. Display Layout (DFS)\n";
+        cout << "4. Display Layout (BFS Level-Order)\n";
+        cout << "5. Navigate to Location (BFS Pathfinding)\n";
+        cout << "6. Load Default Layout (Demo)\n";
+        cout << "7. Display 2D Grid Map\n";
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
@@ -823,6 +845,14 @@ void warehouseNavigationMenu()
         {
         case 1:
         {
+            string name;
+            cout << "Enter warehouse name: ";
+            getline(cin, name);
+            globalWarehouse.initWarehouse(name);
+            break;
+        }
+        case 2:
+        {
             string parent, child, type;
             cout << "Enter parent location name: ";
             getline(cin, parent);
@@ -833,13 +863,13 @@ void warehouseNavigationMenu()
             globalWarehouse.addLocation(parent, child, type);
             break;
         }
-        case 2:
+        case 3:
             globalWarehouse.displayLayout();
             break;
-        case 3:
+        case 4:
             globalWarehouse.bfsDisplay();
             break;
-        case 4:
+        case 5:
         {
             string target;
             cout << "Enter destination name: ";
@@ -847,10 +877,10 @@ void warehouseNavigationMenu()
             globalWarehouse.bfsNavigate(target);
             break;
         }
-        case 5:
+        case 6:
             globalWarehouse.loadDefaultLayout();
             break;
-        case 6:
+        case 7:
             globalWarehouse.displayGrid();
             break;
         case 0:
