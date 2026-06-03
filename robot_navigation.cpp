@@ -47,9 +47,7 @@ public:
     }
 };
 
-// ---------------------------------------------------------
 // MODULE VARIABLES
-// ---------------------------------------------------------
 NavigationStack nav_robotPath;
 string nav_movementLog[200]; 
 int nav_logCount = 0;
@@ -57,10 +55,13 @@ bool nav_isReturned = false;
 
 // Helper function to calculate the opposite direction
 string getReverseDirection(string dir) {
+    if (dir == "Forward (North)") return "Backward (South)";
+    if (dir == "Backward (South)") return "Forward (North)";
+    if (dir == "Turn Left (West)") return "Turn Right (East)";
+    if (dir == "Turn Right (East)") return "Turn Left (West)";
+    
+    // Fallbacks for the automated system integration
     if (dir == "Forward") return "Backward";
-    if (dir == "Backward") return "Forward";
-    if (dir == "Turn Left") return "Turn Right";
-    if (dir == "Turn Right") return "Turn Left";
     if (dir == "East") return "West";
     if (dir == "West") return "East";
     if (dir == "South") return "North";
@@ -68,10 +69,7 @@ string getReverseDirection(string dir) {
     return dir; 
 }
 
-// ---------------------------------------------------------
 // INTEGRATION FUNCTION (For Option 6: Full System Run)
-// ---------------------------------------------------------
-// Load the directions calculated by warehouse_navigation directly
 void loadDirectionsDirectly(string directions[], int dirLength) {
     if (nav_isReturned) {
         nav_robotPath.clear();
@@ -79,12 +77,9 @@ void loadDirectionsDirectly(string directions[], int dirLength) {
         nav_isReturned = false;
     }
 
-    cout << "\n[Robot Navigation] Loading calculated directions into robot path...\n";
+    cout << "\n[Robot Navigation] Loading calculated directions into robot memory...\n";
     for (int i = 0; i < dirLength; i++) {
-        if (nav_logCount >= 200) {
-            cout << "Navigation log full! Stopping early.\n";
-            break;
-        }
+        if (nav_logCount >= 200) break;
 
         string physicalDir = directions[i];
         if (physicalDir != "Stay") {
@@ -93,102 +88,121 @@ void loadDirectionsDirectly(string directions[], int dirLength) {
             cout << " -> Loaded direction: " << physicalDir << "\n";
         }
     }
-    cout << "[Robot Navigation] Route directions loaded. Robot has reached the item.\n";
+    cout << "[Robot Navigation] Route loaded. Robot has reached the destination.\n";
 }
 
-// Your teammates will call this function to instantly load the path
-void translateAndLoadPath(string locationPath[], int pathLength) {
-    // 1. Clear previous logs if a previous job was finished
-    if (nav_isReturned) {
-        nav_robotPath.clear();
-        nav_logCount = 0;
-        nav_isReturned = false;
-    }
+// Full System Run (For main.cpp)
 
-    cout << "\n[Robot Navigation] Translating map route into physical movements...\n";
+// Allows main.cpp to feed directions one-by-one for real-time simulation (to simulate obstacle )
+void executeSingleStep(string physicalDir) {
+    if (nav_logCount >= 200 || physicalDir == "Stay") return;
+    nav_robotPath.push(physicalDir);
+    nav_movementLog[nav_logCount++] = physicalDir;
+    cout << " -> Executed: " << physicalDir << "\n";
+}
 
-    // 2. Translate locations and push to Stack
-    // We start at i = 1 to skip "Main Warehouse" (robot is already there)
-    for (int i = 1; i < pathLength; i++) {
-        if (nav_logCount >= 200) {
-            cout << "Navigation log full! Stopping early.\n";
-            break;
-        }
-
-        string loc = locationPath[i];
-        string physicalDir = "";
-
-        // Translation Rules
-        if (loc.find("Zone") != string::npos) {
-            physicalDir = "Forward";
-        } 
-        else if (loc.find("A1") != string::npos || loc.find("B1") != string::npos || loc.find("C1") != string::npos) {
-            if (loc.find("Aisle") != string::npos) physicalDir = "Turn Left";
-            else if (loc.find("Shelf") != string::npos) physicalDir = "Forward";
-        } 
-        else if (loc.find("A2") != string::npos || loc.find("C2") != string::npos) {
-            if (loc.find("Aisle") != string::npos) physicalDir = "Turn Right";
-            else if (loc.find("Shelf") != string::npos) physicalDir = "Forward";
-        }
-
-        // Push to Stack and Log
-        if (physicalDir != "") {
-            nav_robotPath.push(physicalDir);
-            nav_movementLog[nav_logCount++] = physicalDir;
-            cout << " -> Translated [" << loc << "] into: " << physicalDir << "\n";
-        }
-    }
+// Allows main.cpp to trigger the obstacle event mid-journey
+void triggerObstacle() {
+    if (nav_robotPath.isEmpty()) return;
     
-    cout << "[Robot Navigation] Route translated and loaded. Robot has reached the item.\n";
+    cout << "\n[SENSOR ALERT] Unmapped obstacle detected in path.\n";
+    cout << "[System] Backtracking to safe node...\n";
+    
+    string badMove = nav_robotPath.pop();
+    string correctionMove = getReverseDirection(badMove);
+    
+    cout << " -> Evasive Action: " << correctionMove << " (Reversing blocked step: " << badMove << ")\n";
+    nav_movementLog[nav_logCount++] = " Backtracked: " + correctionMove;
 }
 
-// ---------------------------------------------------------
-// CORE MANUAL FUNCTIONS (For Your Individual Presentation)
-// ---------------------------------------------------------
-void recordMovement() {
+// Individual Demo
+void simulateRouteExecution() {
+    // Reset if starting a fresh simulation
     if (nav_isReturned) {
-        cout << "\n[System] Robot previously returned. Resetting logs for new journey...\n";
+        cout << "\n[System] Robot previously returned. Resetting memory logs for new task...\n";
         nav_robotPath.clear();
         nav_logCount = 0;
         nav_isReturned = false;
-    }
-
-    if (nav_logCount >= 200) {
-        cout << "Navigation log full.\n";
-        return;
     }
 
     int dirChoice;
-    cout << "\n--- Record Movement Step ---\n";
-    cout << "1. Forward\n2. Backward\n3. Turn Left\n4. Turn Right\nSelect direction: ";
-    cin >> dirChoice;
-    if (cin.fail()) {
-        cin.clear();
-        cin.ignore(1000, '\n');
-        cout << "Invalid input. Please enter a number.\n";
-        return;
-    }
+    do {
+        cout << "[ CURRENT MOVEMENT MEMORY STACK ]\n";
+        
+        if (nav_logCount == 0) {
+            cout << " (Stack is Empty - Robot is at Start Point)\n";
+        } else {
+            for (int i = 0; i < nav_logCount; i++) {
+                cout << "  Step " << i + 1 << ": " << nav_movementLog[i] << "\n";
+            }
+        }
+        cout << "--------------------------------------------------\n";
 
-    string dir = "";
-    switch(dirChoice) {
-        case 1: dir = "Forward"; break;
-        case 2: dir = "Backward"; break;
-        case 3: dir = "Turn Left"; break;
-        case 4: dir = "Turn Right"; break;
-        default: cout << "Invalid choice.\n"; return;
-    }
+        // Original menu choices
+        cout << "1. Step Forward (North)\n";
+        cout << "2. Step Backward (South)\n";
+        cout << "3. Turn Left (West)\n";
+        cout << "4. Turn Right (East)\n";
+        cout << "5. Undo Last Move (Obstacle OR Incorrect Path)\n";
+        cout << "0. End Simulation & Return to Menu\n";
+        cout << "Select system event: ";
+        cin >> dirChoice;
 
-    nav_robotPath.push(dir);
-    nav_movementLog[nav_logCount++] = dir;
-    cout << "Success: Movement '" << dir << "' recorded.\n";
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            cout << "Invalid input. Please enter a number.\n";
+            continue;
+        }
+
+        string dir = "";
+        switch(dirChoice) {
+            case 1: dir = "Forward (North)"; break;
+            case 2: dir = "Backward (South)"; break;
+            case 3: dir = "Turn Left (West)"; break;
+            case 4: dir = "Turn Right (East)"; break;
+            case 5: 
+                // Undo
+                if (nav_robotPath.isEmpty()) {
+                    cout << "\n[System] Robot is at the Warehouse. Cannot Reverse Any Further.\n";
+                } else {
+                    cout << "\n Obstacle Detected OR Incorrect Path Taken\n";
+                    cout << "[System] Backtracking to safe node...\n";
+                    
+                    string badMove = nav_robotPath.pop();
+                    string correctionMove = getReverseDirection(badMove);
+                    
+                    cout << " -> Evasive Action: " << correctionMove << " (Reversing blocked step: " << badMove << ")\n";
+                    nav_movementLog[nav_logCount++] = " Backtracked: " + correctionMove;
+                }
+                continue; // Skip the standard push logic below since dodging
+            case 0:
+                cout << "Exiting Route Simulator...\n";
+                continue;
+            default:
+                cout << "Invalid choice.\n";
+                continue;
+        }
+
+        // Standard movement logging
+        if (nav_logCount >= 200) {
+            cout << "Navigation memory full.\n";
+            continue;
+        }
+        nav_robotPath.push(dir);
+        nav_movementLog[nav_logCount++] = dir;
+        cout << "[System] Step recorded and executed: " << dir << "\n";
+
+    } while (dirChoice != 0);
 }
 
+// STANDARD MENU FUNCTIONS
 void displayForwardPath() {
     if (nav_logCount == 0) {
         cout << "\nNo movements recorded yet.\n";
         return;
     }
-    cout << "\n--- Forward Path to Destination ---\n";
+    cout << "\n--- Current Path Memory in Robot --- \n";
     for (int i = 0; i < nav_logCount; i++) {
         cout << "Step " << i + 1 << ": " << nav_movementLog[i] << "\n";
     }
@@ -200,7 +214,7 @@ void returnUsingReversePath() {
         return;
     }
 
-    cout << "\n--- Initiating Return Journey ---\n";
+    cout << "\n--- Initiating Autonomous Return Sequence ---\n";
     int step = 1;
     
     while (!nav_robotPath.isEmpty()) {
@@ -210,7 +224,7 @@ void returnUsingReversePath() {
              << " \t(Reversing: " << originalDir << ")\n";
     }
     
-    cout << "\nSuccess: Robot safely retraced its steps and returned to the station!\n";
+    cout << "\nSuccess: Robot safely retraced its memory and returned to the station!\n";
     nav_isReturned = true; 
 }
 
@@ -225,23 +239,23 @@ void displayNavigationLog() {
         cout << "  -> " << nav_movementLog[i] << "\n";
     }
     cout << "\n[Current Status]\n";
-    if (nav_isReturned) cout << "  Status: Task finished. Return journey completed.\n";
+    if (nav_isReturned) cout << "  Status: Task finished. Return sequence completed.\n";
     else cout << "  Status: Robot is currently navigating (Pending return).\n";
 }
 
 void robotNavigationMenu() {
     int choice;
     do {
-        cout << "\n--- Robot Navigation Menu ---\n";
-        cout << "1. Record Movement Step (Manual)\n";
-        cout << "2. Display Forward Path\n";
-        cout << "3. Return Using Reverse Path\n";
-        cout << "4. Display Navigation Log\n";
+        cout << "\n--- Robot Navigation Module ---\n";
+        cout << "1. Simulate Route Execution & Sensor Triggers\n";
+        cout << "2. Display Current Path Memory\n";
+        cout << "3. Execute Auto-Return to Base (Reverse Full Path)\n";
+        cout << "4. Display Complete Navigation Log\n";
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
         if (cin.fail()) {
-            if (cin.eof()) { choice = 0; break; } // EOF: exit menu
+            if (cin.eof()) { choice = 0; break; } 
             cin.clear();
             cin.ignore(1000, '\n');
             choice = -1;
@@ -250,7 +264,7 @@ void robotNavigationMenu() {
         }
 
         switch (choice) {
-            case 1: recordMovement(); break;
+            case 1: simulateRouteExecution(); break;
             case 2: displayForwardPath(); break;
             case 3: returnUsingReversePath(); break;
             case 4: displayNavigationLog(); break;
