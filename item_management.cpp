@@ -1,6 +1,8 @@
 #pragma once
 #include <iostream>
 #include <string>
+#include <fstream>
+#include <sstream>
 using namespace std;
 
 // Node representing an item in the Binary Search Tree
@@ -10,15 +12,17 @@ struct ItemNode
     string itemName;
     string category;
     string location;
+    int quantity; // Stock quantity in warehouse
     ItemNode *left;
     ItemNode *right;
 
-    ItemNode(string id, string name, string cat, string loc)
+    ItemNode(string id, string name, string cat, string loc, int qty)
     {
         itemID = id;
         itemName = name;
         category = cat;
         location = loc;
+        quantity = qty;
         left = nullptr;
         right = nullptr;
     }
@@ -34,22 +38,37 @@ struct ItemTree
         root = nullptr;
     }
 
+    void clearTree(ItemNode *node)
+    {
+        if (node == nullptr)
+            return;
+        clearTree(node->left);
+        clearTree(node->right);
+        delete node;
+    }
+
+    void clear()
+    {
+        clearTree(root);
+        root = nullptr;
+    }
+
     // Helper function to insert a node recursively
-    ItemNode *insertNode(ItemNode *node, string id, string name, string cat, string loc, bool &success)
+    ItemNode *insertNode(ItemNode *node, string id, string name, string cat, string loc, int qty, bool &success)
     {
         if (node == nullptr)
         {
             success = true;
-            return new ItemNode(id, name, cat, loc);
+            return new ItemNode(id, name, cat, loc, qty);
         }
 
         if (id < node->itemID)
         {
-            node->left = insertNode(node->left, id, name, cat, loc, success);
+            node->left = insertNode(node->left, id, name, cat, loc, qty, success);
         }
         else if (id > node->itemID)
         {
-            node->right = insertNode(node->right, id, name, cat, loc, success);
+            node->right = insertNode(node->right, id, name, cat, loc, qty, success);
         }
         else
         {
@@ -58,13 +77,87 @@ struct ItemTree
         return node;
     }
 
-    void insertItem(string id, string name, string cat, string loc)
+    // Recursive helper to save items to stream (in-order)
+    void saveItemsToStream(ItemNode* node, ofstream& file)
+    {
+        if (node == nullptr) return;
+        saveItemsToStream(node->left, file);
+        file << node->itemID << ","
+             << node->itemName << ","
+             << node->category << ","
+             << node->location << ","
+             << node->quantity << "\n";
+        saveItemsToStream(node->right, file);
+    }
+
+    void saveAllItemsToCSV()
+    {
+        ofstream file("items.csv");
+        if (!file.is_open())
+        {
+            cout << "[Item Management] Warning: Could not open items.csv for writing.\n";
+            return;
+        }
+        file << "ItemID,ItemName,Category,Location,Quantity\n";
+        saveItemsToStream(root, file);
+        file.close();
+    }
+
+    void loadItemsFromCSV()
+    {
+        clear();
+
+        ifstream file("items.csv");
+        if (!file.is_open())
+        {
+            // If file doesn't exist, load defaults and write to CSV
+            loadDefaultItems();
+            saveAllItemsToCSV();
+            return;
+        }
+
+        string line;
+        if (!getline(file, line))
+        {
+            file.close();
+            return;
+        }
+
+        while (getline(file, line))
+        {
+            if (line.empty()) continue;
+            stringstream ss(line);
+            string id, name, category, location, qtyStr;
+            
+            getline(ss, id, ',');
+            getline(ss, name, ',');
+            getline(ss, category, ',');
+            getline(ss, location, ',');
+            getline(ss, qtyStr, ',');
+
+            if (!id.empty())
+            {
+                int qty = 0;
+                try {
+                    qty = stoi(qtyStr);
+                } catch (...) {
+                    qty = 0;
+                }
+                bool success = false;
+                root = insertNode(root, id, name, category, location, qty, success);
+            }
+        }
+        file.close();
+    }
+
+    void insertItem(string id, string name, string cat, string loc, int qty)
     {
         bool success = false;
-        root = insertNode(root, id, name, cat, loc, success);
+        root = insertNode(root, id, name, cat, loc, qty, success);
         if (success)
         {
-            cout << "Item \"" << name << "\" added successfully.\n";
+            cout << "Item \"" << name << "\" (Stock: " << qty << ") added successfully.\n";
+            saveAllItemsToCSV();
         }
         else
         {
@@ -158,6 +251,7 @@ struct ItemTree
             node->itemName = temp->itemName;
             node->category = temp->category;
             node->location = temp->location;
+            node->quantity = temp->quantity;
             node->right = deleteNode(node->right, temp->itemID, success);
         }
         return node;
@@ -170,6 +264,7 @@ struct ItemTree
         if (success)
         {
             cout << "Item with ID \"" << id << "\" deleted successfully.\n";
+            saveAllItemsToCSV();
         }
         else
         {
@@ -187,7 +282,8 @@ struct ItemTree
         cout << "ID: " << node->itemID
              << " | Name: " << node->itemName
              << " | Category: " << node->category
-             << " | Location: " << node->location << "\n";
+             << " | Location: " << node->location
+             << " | Stock Count: " << node->quantity << "\n";
         inOrderTraversal(node->right);
     }
 
@@ -204,23 +300,26 @@ struct ItemTree
 
     void loadDefaultItems()
     {
-        insertItem("105", "Wireless Mouse", "Electronics", "Shelf A1-1");
-        insertItem("102", "USB-C Hub", "Electronics", "Shelf A1-2");
-        insertItem("108", "Desk Lamp", "Furniture", "Shelf B1-1");
-        insertItem("101", "Mechanical Keyboard", "Electronics", "Shelf A1-3");
-        insertItem("103", "Monitor Stand", "Furniture", "Shelf A2-1");
-        insertItem("107", "Webcam HD", "Electronics", "Shelf B1-2");
-        insertItem("110", "Ergonomic Chair", "Furniture", "Shelf C1-1");
-        insertItem("104", "Laptop Stand", "Accessories", "Shelf A2-2");
-        insertItem("106", "Headphones", "Electronics", "Shelf A1-1");
-        insertItem("109", "Portable Charger", "Electronics", "Shelf C2-1");
-        cout << "\nDefault items loaded successfully.\n";
+        // Clear any existing items first so we don't duplicate
+        clear();
+        insertItem("105", "Wireless Mouse", "Electronics", "Shelf A1-1", 50);
+        insertItem("102", "USB-C Hub", "Electronics", "Shelf A1-2", 30);
+        insertItem("108", "Desk Lamp", "Furniture", "Shelf B1-1", 20);
+        insertItem("101", "Mechanical Keyboard", "Electronics", "Shelf A1-3", 15);
+        insertItem("103", "Monitor Stand", "Furniture", "Shelf A2-1", 25);
+        insertItem("107", "Webcam HD", "Electronics", "Shelf B1-2", 40);
+        insertItem("110", "Ergonomic Chair", "Furniture", "Shelf C1-1", 10);
+        insertItem("104", "Laptop Stand", "Accessories", "Shelf A2-2", 35);
+        insertItem("106", "Headphones", "Electronics", "Shelf A1-1", 15);
+        insertItem("109", "Portable Charger", "Electronics", "Shelf C2-1", 60);
     }
 };
 
+ItemTree globalItemTree;
+
 void itemManagementMenu()
 {
-    ItemTree itemTree;
+    globalItemTree.loadItemsFromCSV();
     int choice;
 
     do
@@ -229,20 +328,28 @@ void itemManagementMenu()
         cout << "1. Insert New Item\n";
         cout << "2. Search Item by ID\n";
         cout << "3. Search Item by Name\n";
-        cout << "4. Update Item Details\n";
+        cout << "4. Update Item Details / Stock\n";
         cout << "5. Delete Item\n";
         cout << "6. Display All Items (Sorted)\n";
         cout << "7. Load Default Items (Demo)\n";
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
-        cin.ignore(); // clear leftover newline
+        if (cin.fail()) {
+            if (cin.eof()) { choice = 0; break; } // EOF: exit menu
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = -1;
+        } else {
+            cin.ignore(); // clear leftover newline
+        }
 
         switch (choice)
         {
         case 1:
         {
             string id, name, category, location;
+            int qty;
             cout << "Enter Item ID: ";
             getline(cin, id);
             cout << "Enter Item Name: ";
@@ -251,7 +358,10 @@ void itemManagementMenu()
             getline(cin, category);
             cout << "Enter Location (Shelf): ";
             getline(cin, location);
-            itemTree.insertItem(id, name, category, location);
+            cout << "Enter Initial Stock Quantity: ";
+            cin >> qty;
+            cin.ignore();
+            globalItemTree.insertItem(id, name, category, location, qty);
             break;
         }
         case 2:
@@ -259,14 +369,15 @@ void itemManagementMenu()
             string id;
             cout << "Enter Item ID to search: ";
             getline(cin, id);
-            ItemNode *node = itemTree.searchByID(id);
+            ItemNode *node = globalItemTree.searchByID(id);
             if (node != nullptr)
             {
                 cout << "\nItem Found:\n";
                 cout << "ID: " << node->itemID
                      << " | Name: " << node->itemName
                      << " | Category: " << node->category
-                     << " | Location: " << node->location << "\n";
+                     << " | Location: " << node->location
+                     << " | Stock Count: " << node->quantity << "\n";
             }
             else
             {
@@ -279,14 +390,15 @@ void itemManagementMenu()
             string name;
             cout << "Enter Item Name to search: ";
             getline(cin, name);
-            ItemNode *node = itemTree.searchByName(name);
+            ItemNode *node = globalItemTree.searchByName(name);
             if (node != nullptr)
             {
                 cout << "\nItem Found:\n";
                 cout << "ID: " << node->itemID
                      << " | Name: " << node->itemName
                      << " | Category: " << node->category
-                     << " | Location: " << node->location << "\n";
+                     << " | Location: " << node->location
+                     << " | Stock Count: " << node->quantity << "\n";
             }
             else
             {
@@ -299,16 +411,18 @@ void itemManagementMenu()
             string id;
             cout << "Enter Item ID to update: ";
             getline(cin, id);
-            ItemNode *node = itemTree.searchByID(id);
+            ItemNode *node = globalItemTree.searchByID(id);
             if (node != nullptr)
             {
-                string name, category, location;
+                string name, category, location, qtyStr;
                 cout << "Enter new Item Name (leave blank to keep current): ";
                 getline(cin, name);
                 cout << "Enter new Category (leave blank to keep current): ";
                 getline(cin, category);
                 cout << "Enter new Location (leave blank to keep current): ";
                 getline(cin, location);
+                cout << "Enter new Stock Quantity (leave blank to keep current): ";
+                getline(cin, qtyStr);
 
                 if (!name.empty())
                     node->itemName = name;
@@ -316,7 +430,15 @@ void itemManagementMenu()
                     node->category = category;
                 if (!location.empty())
                     node->location = location;
+                if (!qtyStr.empty()) {
+                    try {
+                        node->quantity = stoi(qtyStr);
+                    } catch (...) {
+                        cout << "Invalid quantity entered. Stock quantity was not changed.\n";
+                    }
+                }
 
+                globalItemTree.saveAllItemsToCSV();
                 cout << "Item details updated successfully.\n";
             }
             else
@@ -330,14 +452,16 @@ void itemManagementMenu()
             string id;
             cout << "Enter Item ID to delete: ";
             getline(cin, id);
-            itemTree.removeItem(id);
+            globalItemTree.removeItem(id);
             break;
         }
         case 6:
-            itemTree.displayAllItems();
+            globalItemTree.displayAllItems();
             break;
         case 7:
-            itemTree.loadDefaultItems();
+            globalItemTree.loadDefaultItems();
+            globalItemTree.saveAllItemsToCSV();
+            cout << "\nDefault items loaded and saved to CSV.\n";
             break;
         case 0:
             cout << "Returning to main menu...\n";

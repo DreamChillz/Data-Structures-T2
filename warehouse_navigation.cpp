@@ -147,6 +147,27 @@ struct WarehouseTree
         obstacleCount = 0;
     }
 
+    ~WarehouseTree()
+    {
+        clear();
+    }
+
+    void clearTree(LocationNode *node)
+    {
+        if (node == nullptr)
+            return;
+        clearTree(node->firstChild);
+        clearTree(node->nextSibling);
+        delete node;
+    }
+
+    void clear()
+    {
+        clearTree(root);
+        root = nullptr;
+        obstacleCount = 0;
+    }
+
     //  initWarehouse
     void initWarehouse(const string &warehouseName)
     {
@@ -197,6 +218,12 @@ struct WarehouseTree
         if (parent == nullptr)
         {
             cout << "Parent location \"" << parentName << "\" not found.\n";
+            return;
+        }
+
+        if (findNode(childName) != nullptr)
+        {
+            cout << "Failed to add: location \"" << childName << "\" already exists.\n";
             return;
         }
 
@@ -668,6 +695,7 @@ struct WarehouseTree
     //  [3]  A1-1 A1-2 A1-3 A2-1 A2-2 B1-1 B1-2 C1-1 C2-1 C2-2
     void loadDefaultLayout()
     {
+        clear();
         initWarehouse("Main Warehouse");
 
         // --- Zones ---
@@ -777,9 +805,10 @@ private:
 
 //  SECTION 5 — MENU
 
+WarehouseTree globalWarehouse;
+
 void warehouseNavigationMenu()
 {
-    WarehouseTree warehouse;
     int choice;
 
     do
@@ -795,7 +824,14 @@ void warehouseNavigationMenu()
         cout << "0. Back to Main Menu\n";
         cout << "Enter choice: ";
         cin >> choice;
-        cin.ignore();
+        if (cin.fail()) {
+            if (cin.eof()) { choice = 0; break; } // EOF: exit menu
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = -1;
+        } else {
+            cin.ignore();
+        }
 
         switch (choice)
         {
@@ -804,7 +840,7 @@ void warehouseNavigationMenu()
             string name;
             cout << "Enter warehouse name: ";
             getline(cin, name);
-            warehouse.initWarehouse(name);
+            globalWarehouse.initWarehouse(name);
             break;
         }
         case 2:
@@ -816,28 +852,28 @@ void warehouseNavigationMenu()
             getline(cin, child);
             cout << "Enter type (zone / aisle / shelf): ";
             getline(cin, type);
-            warehouse.addLocation(parent, child, type);
+            globalWarehouse.addLocation(parent, child, type);
             break;
         }
         case 3:
-            warehouse.displayLayout();
+            globalWarehouse.displayLayout();
             break;
         case 4:
-            warehouse.bfsDisplay();
+            globalWarehouse.bfsDisplay();
             break;
         case 5:
         {
             string target;
             cout << "Enter destination name: ";
             getline(cin, target);
-            warehouse.bfsNavigate(target);
+            globalWarehouse.bfsNavigate(target);
             break;
         }
         case 6:
-            warehouse.loadDefaultLayout();
+            globalWarehouse.loadDefaultLayout();
             break;
         case 7:
-            warehouse.displayGrid();
+            globalWarehouse.displayGrid();
             break;
         case 0:
             cout << "Returning to main menu...\n";
