@@ -648,13 +648,8 @@ struct WarehouseTree
         return count;
     }
 
-    //  getDirections — converts a name path into cardinal directions using x,y coords
-    //  Fills outDirs[] with one direction per step (pathLen-1 entries).
-    //  Returns the number of direction strings written.
-    //
-    //  4-direction rule (dominant axis wins):
-    //    |dx| >= |dy|  ->  East (dx>0) or West (dx<0)
-    //    |dy|  > |dx|  ->  South (dy>0) or North (dy<0)
+    //  getDirections — converts a logical name path into physical step-by-step directions.
+    //  Expands logical jumps into true grid movements (Manhattan Routing).
     int getDirections(string pathNames[], int pathLen, string outDirs[])
     {
         int count = 0;
@@ -663,24 +658,37 @@ struct WarehouseTree
             LocationNode *curr = findNode(pathNames[i]);
             LocationNode *next = findNode(pathNames[i + 1]);
 
-            // Fallback if coordinates are not set on either node
+            // Fallback if coordinates are not set
             if (!curr || !next || curr->x < 0 || next->x < 0)
             {
                 outDirs[count++] = "Forward";
                 continue;
             }
 
-            int dx = next->x - curr->x;
-            int dy = next->y - curr->y;
+            int currentX = curr->x;
+            int currentY = curr->y;
+            int targetX = next->x;
+            int targetY = next->y;
 
-            string dir;
-            if (dx == 0 && dy == 0)    dir = "Stay";
-            else if (abs(dx) >= abs(dy))
-                dir = (dx > 0) ? "East" : "West";
-            else
-                dir = (dy > 0) ? "South" : "North";
+            // 1. Move along the X-axis step-by-step
+            while (currentX < targetX) {
+                outDirs[count++] = "East";
+                currentX++;
+            }
+            while (currentX > targetX) {
+                outDirs[count++] = "West";
+                currentX--;
+            }
 
-            outDirs[count++] = dir;
+            // 2. Move along the Y-axis step-by-step
+            while (currentY < targetY) {
+                outDirs[count++] = "South";
+                currentY++;
+            }
+            while (currentY > targetY) {
+                outDirs[count++] = "North";
+                currentY--;
+            }
         }
         return count;
     }
