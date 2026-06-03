@@ -4,9 +4,7 @@
 
 using namespace std;
 
-// ---------------------------------------------------------
-// CUSTOM DATA STRUCTURE: LINKED-LIST BASED STACK
-// ---------------------------------------------------------
+//linked-list stack
 struct NavNode {
     string direction;
     NavNode* next;
@@ -47,7 +45,7 @@ public:
     }
 };
 
-// MODULE VARIABLES
+// module variables
 NavigationStack nav_robotPath;
 string nav_movementLog[200]; 
 int nav_logCount = 0;
@@ -69,7 +67,7 @@ string getReverseDirection(string dir) {
     return dir; 
 }
 
-// INTEGRATION FUNCTION (For Option 6: Full System Run)
+// integration function (For Option 6: Full System Run)
 void loadDirectionsDirectly(string directions[], int dirLength) {
     if (nav_isReturned) {
         nav_robotPath.clear();
@@ -90,8 +88,6 @@ void loadDirectionsDirectly(string directions[], int dirLength) {
     }
     cout << "[Robot Navigation] Route loaded. Robot has reached the destination.\n";
 }
-
-// Full System Run (For main.cpp)
 
 // Allows main.cpp to feed directions one-by-one for real-time simulation (to simulate obstacle )
 void executeSingleStep(string physicalDir) {
@@ -196,7 +192,6 @@ void simulateRouteExecution() {
     } while (dirChoice != 0);
 }
 
-// STANDARD MENU FUNCTIONS
 void displayForwardPath() {
     if (nav_logCount == 0) {
         cout << "\nNo movements recorded yet.\n";
