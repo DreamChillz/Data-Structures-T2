@@ -221,49 +221,93 @@ int main() {
                 // 6. Get directions using grid coordinates
                 string directions[200];
                 int dirLength = globalWarehouse.getDirections(locationPath, pathLength, directions);
-                
-                // 7. Load directions and execute forward path
-                loadDirectionsDirectly(directions, dirLength);
-                displayForwardPath();
-                
-                // 8. Simulate reverse journey to return robot to base
-                cout << "\n[System] Item retrieved. Executing return protocol...\n";
-                returnUsingReversePath();
-                
-                // 9. Mark the task as completed for this robot
-                int robotIndex = findRobotIndex(robotID);
-                if (robotIndex != -1) {
-                    robots[robotIndex].status = "available";
-                    robots[robotIndex].currentTaskID = "-";
-                    saveRobotsToCSV();
+        
+                // 7. Dynamic Obstacle Simulation 
+                cout << "\n[System] Do you want to simulate a dynamic/unmapped obstacle for this run? (y/n): ";
+                char simObs;
+                cin >> simObs;
+                cin.ignore();
+
+                if (simObs == 'y' || simObs == 'Y') {
+                    cout << "\n[Robot Navigation] Executing route. Monitoring proximity sensors...\n";
                     
-                    // Update assignment record status
-                    for (int i = assignmentCount - 1; i >= 0; i--) {
-                        if (assignmentHistory[i].robotID == robotID &&
-                            assignmentHistory[i].taskID == to_string(currentOrder.orderID)) {
-                            assignmentHistory[i].status = "Completed";
-                            break;
+                    int crashPoint = dirLength / 2; // Obstacle appears halfway through the route
+                    
+                    for (int i = 0; i < dirLength; i++) {
+                        if (i == crashPoint) {
+                            //triggerObstacle and return 
+                            triggerObstacle();
+                            
+                            cout << "\n[System] FATAL: Path blocked by unmapped object. Mission aborted.\n";
+                            cout << "[System] Executing emergency return protocol...\n";
+                            
+                            // Use the Stack to automatically drive back home
+                            returnUsingReversePath();
+                            
+                            // Mark order as failed so the system knows it wasn't completed
+                            currentOrder.status = "Failed: Dynamic Obstacle Blocked Path";
+                            if (completedCount < 100) {
+                                completedOrders[completedCount++] = currentOrder;
+                            }
+                            
+                            // Mark robot as available again
+                            int robotIndex = findRobotIndex(robotID);
+                            if (robotIndex != -1) {
+                                robots[robotIndex].status = "available";
+                                robots[robotIndex].currentTaskID = "-";
+                                saveRobotsToCSV();
+                            }
+                            break; // End the simulation loop
                         }
+                        
+                        executeSingleStep(directions[i]); // Move forward normally
                     }
                 }
-                
-                // --- DEDUCT STOCK ---
-                itemNode->quantity -= currentOrder.quantity;
-                globalItemTree.saveAllItemsToCSV();
-                cout << "[System] Stock Deducted: " << currentOrder.quantity 
-                     << " unit(s) of \"" << itemNode->itemName << "\".\n";
-                cout << "[System] Remaining Stock Count for ID " << itemNode->itemID 
-                     << ": " << itemNode->quantity << "\n";
-                
-                // 10. Record order as completed and save
-                currentOrder.status = "Completed";
-                if (completedCount < 100) {
-                    completedOrders[completedCount++] = currentOrder;
+                else {
+                    // 7. Load directions and execute forward path
+                    loadDirectionsDirectly(directions, dirLength);
+                    displayForwardPath();
+                    
+                    // 8. Simulate reverse journey to return robot to base
+                    cout << "\n[System] Item retrieved. Executing return protocol...\n";
+                    returnUsingReversePath();
+                    
+                    // 9. Mark the task as completed for this robot
+                    int robotIndex = findRobotIndex(robotID);
+                    if (robotIndex != -1) {
+                        robots[robotIndex].status = "available";
+                        robots[robotIndex].currentTaskID = "-";
+                        saveRobotsToCSV();
+                        
+                        // Update assignment record status
+                        for (int i = assignmentCount - 1; i >= 0; i--) {
+                            if (assignmentHistory[i].robotID == robotID &&
+                                assignmentHistory[i].taskID == to_string(currentOrder.orderID)) {
+                                assignmentHistory[i].status = "Completed";
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // deduct stock 
+                    itemNode->quantity -= currentOrder.quantity;
+                    globalItemTree.saveAllItemsToCSV();
+                    cout << "[System] Stock Deducted: " << currentOrder.quantity 
+                        << " unit(s) of \"" << itemNode->itemName << "\".\n";
+                    cout << "[System] Remaining Stock Count for ID " << itemNode->itemID 
+                        << ": " << itemNode->quantity << "\n";
+                    
+                    // 10. Record order as completed and save
+                    currentOrder.status = "Completed";
+                    if (completedCount < 100) {
+                        completedOrders[completedCount++] = currentOrder;
+                    }
+                    saveAllOrders();
+                    
+                    cout << "\n=== AUTOMATION COMPLETE ===\n";
+                    break;
                 }
-                saveAllOrders();
-                
-                cout << "\n=== AUTOMATION COMPLETE ===\n";
-                break;
+
             }
             case 0:
                 cout << "Exiting system...\n";
